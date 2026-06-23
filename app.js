@@ -227,7 +227,8 @@ document.addEventListener('DOMContentLoaded', () => {
         disablekb: 1,
         fs: 0,
         modestbranding: 1,
-        rel: 0
+        rel: 0,
+        start: 346
       },
       events: {
         onReady: function (event) {
