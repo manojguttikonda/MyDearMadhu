@@ -198,85 +198,84 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 6. Background Music System — Innerbloom by Rufus Du Sol via YouTube IFrame API
-  const musicBtn = document.getElementById('music-btn');
+  // 6. Background Music System — Innerbloom by Rufus Du Sol
+  const musicBtn  = document.getElementById('music-btn');
   const musicIcon = document.getElementById('music-icon');
   const musicWave = document.getElementById('music-wave');
-  const enterBtn = document.getElementById('enter-btn');
+  const enterBtn  = document.getElementById('enter-btn');
 
-  let ytPlayer = null;
-  let isPlaying = false;
+  // Expose playMusic/pauseMusic globally so the YouTube callback can reach them
+  window._yt_isPlaying = false;
 
-  // Load YouTube IFrame API
-  const ytScript = document.createElement('script');
-  ytScript.src = 'https://www.youtube.com/iframe_api';
-  document.head.appendChild(ytScript);
-
-  // Called automatically by YouTube API when ready
-  window.onYouTubeIframeAPIReady = function () {
-    ytPlayer = new YT.Player('yt-player', {
-      height: '1',
-      width: '1',
-      // Innerbloom by Rufus Du Sol — official YouTube video ID
-      videoId: 'oEoOtKjyBvE',
-      playerVars: {
-        autoplay: 0,
-        loop: 1,
-        playlist: 'oEoOtKjyBvE',
-        controls: 0,
-        disablekb: 1,
-        fs: 0,
-        modestbranding: 1,
-        rel: 0,
-        start: 346
-      },
-      events: {
-        onReady: function (event) {
-          event.target.setVolume(70);
-        },
-        onStateChange: function (event) {
-          if (event.data === YT.PlayerState.PLAYING) {
-            musicIcon.textContent = '⏸';
-            if (musicWave) musicWave.classList.add('playing');
-            isPlaying = true;
-          } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-            musicIcon.textContent = '▶';
-            if (musicWave) musicWave.classList.remove('playing');
-            isPlaying = false;
-          }
-        }
-      }
-    });
+  window._yt_setPlaying = function(state) {
+    window._yt_isPlaying = state;
+    if (musicIcon) musicIcon.textContent = state ? '⏸' : '▶';
+    if (musicWave) musicWave.classList.toggle('playing', state);
   };
 
-  function playMusic() {
-    if (ytPlayer && ytPlayer.playVideo) {
-      ytPlayer.playVideo();
-    }
-  }
-
-  function pauseMusic() {
-    if (ytPlayer && ytPlayer.pauseVideo) {
-      ytPlayer.pauseVideo();
-    }
-  }
-
-  function toggleMusic() {
-    if (isPlaying) {
-      pauseMusic();
-    } else {
-      playMusic();
-    }
-  }
-
   if (musicBtn) {
-    musicBtn.addEventListener('click', toggleMusic);
+    musicBtn.addEventListener('click', () => {
+      const player = window._ytPlayer;
+      if (!player) return;
+      if (window._yt_isPlaying) {
+        player.pauseVideo();
+      } else {
+        player.seekTo(346, true); // always jump to 5:46 when resuming
+        player.playVideo();
+      }
+    });
   }
 
-  // Auto-start Innerbloom when she clicks "Enter Our Story"
   if (enterBtn) {
     enterBtn.addEventListener('click', () => {
-      setTimeout(playMusic, 300);
+      setTimeout(() => {
+        const player = window._ytPlayer;
+        if (player && !window._yt_isPlaying) {
+          player.seekTo(346, true);
+          player.playVideo();
+        }
+      }, 400);
     });
   }
 });
+
+// ── YouTube IFrame API callback — must be at GLOBAL scope ──────────────────
+// Innerbloom by Rufus Du Sol  (start = 5 min 46 sec = 346 s)
+window.onYouTubeIframeAPIReady = function () {
+  window._ytPlayer = new YT.Player('yt-player', {
+    height: '1',
+    width: '1',
+    videoId: 'oEoOtKjyBvE',
+    playerVars: {
+      autoplay : 0,
+      loop     : 1,
+      playlist : 'oEoOtKjyBvE',
+      controls : 0,
+      disablekb: 1,
+      fs       : 0,
+      rel      : 0,
+      start    : 346
+    },
+    events: {
+      onReady: function (e) {
+        e.target.setVolume(70);
+        e.target.seekTo(346, true); // belt-and-suspenders: seek to 5:46
+      },
+      onStateChange: function (e) {
+        const playing = (e.data === YT.PlayerState.PLAYING);
+        const stopped = (e.data === YT.PlayerState.PAUSED ||
+                         e.data === YT.PlayerState.ENDED);
+        if (playing) window._yt_setPlaying(true);
+        if (stopped) window._yt_setPlaying(false);
+      }
+    }
+  });
+};
+
+// Inject the YouTube IFrame API script
+(function () {
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  const firstScript = document.getElementsByTagName('script')[0];
+  firstScript.parentNode.insertBefore(tag, firstScript);
+}());
