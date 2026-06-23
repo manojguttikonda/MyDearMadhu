@@ -198,40 +198,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 6. Background Music — Innerbloom by Rufus Du Sol (local MP3, starts at 5:46)
+  // 6. Background Music — Innerbloom by Rufus Du Sol (starts at exactly 5:46)
   const bgMusic   = document.getElementById('bg-music');
   const musicBtn  = document.getElementById('music-btn');
   const musicIcon = document.getElementById('music-icon');
   const musicWave = document.getElementById('music-wave');
   const enterBtn  = document.getElementById('enter-btn');
 
-  // Seek to 5:46 (346s) once the audio metadata is ready
-  if (bgMusic) {
-    bgMusic.addEventListener('loadedmetadata', () => {
-      bgMusic.currentTime = 346;
-    });
+  const START_TIME = 346; // 5 min 46 sec
+  let firstPlay = true;  // track if music has ever been started
 
-    // If metadata already loaded (cached), set immediately
-    if (bgMusic.readyState >= 1) {
-      bgMusic.currentTime = 346;
-    }
+  function setPlayingUI(playing) {
+    if (musicIcon) musicIcon.textContent = playing ? '⏸' : '▶';
+    if (musicWave) musicWave.classList.toggle('playing', playing);
+  }
+
+  function doPlay() {
+    bgMusic.play()
+      .then(() => setPlayingUI(true))
+      .catch(err => console.warn('Audio play blocked:', err));
   }
 
   function playMusic() {
     if (!bgMusic) return;
-    // Always jump to 5:46 if at the very beginning
-    if (bgMusic.currentTime < 1) bgMusic.currentTime = 346;
-    bgMusic.play().then(() => {
-      musicIcon.textContent = '⏸';
-      if (musicWave) musicWave.classList.add('playing');
-    }).catch(err => console.log('Playback blocked until user interaction.', err));
+
+    if (firstPlay) {
+      firstPlay = false;
+      // Force seek to 5:46 then play
+      const seekAndPlay = () => {
+        bgMusic.currentTime = START_TIME;
+        // Wait for seeked event to confirm position, then play
+        bgMusic.addEventListener('seeked', doPlay, { once: true });
+      };
+
+      if (bgMusic.readyState >= 3) {
+        // Audio already ready — seek straight away
+        seekAndPlay();
+      } else {
+        // Wait until audio is ready to be played
+        bgMusic.addEventListener('canplay', seekAndPlay, { once: true });
+        bgMusic.load(); // kick off loading if not started
+      }
+    } else {
+      // Resume from paused position (user paused mid-song)
+      doPlay();
+    }
   }
 
   function pauseMusic() {
     if (!bgMusic) return;
     bgMusic.pause();
-    musicIcon.textContent = '▶';
-    if (musicWave) musicWave.classList.remove('playing');
+    setPlayingUI(false);
   }
 
   if (musicBtn) {
