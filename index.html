@@ -20,8 +20,10 @@
     <button class="music-btn" id="music-btn" aria-label="Toggle background music">
       <span id="music-icon">▶</span>
     </button>
-    <!-- Hidden YouTube player for Innerbloom by Rufus Du Sol -->
-    <div id="yt-player" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;"></div>
+    <!-- Local MP3: Innerbloom by Rufus Du Sol -->
+    <audio id="bg-music" loop preload="auto">
+      <source src="music/innerbloom.mp3" type="audio/mpeg">
+    </audio>
   </div>
 
   <!-- Hero Section -->

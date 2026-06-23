@@ -198,84 +198,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 6. Background Music System — Innerbloom by Rufus Du Sol
+  // 6. Background Music — Innerbloom by Rufus Du Sol (local MP3, starts at 5:46)
+  const bgMusic   = document.getElementById('bg-music');
   const musicBtn  = document.getElementById('music-btn');
   const musicIcon = document.getElementById('music-icon');
   const musicWave = document.getElementById('music-wave');
   const enterBtn  = document.getElementById('enter-btn');
 
-  // Expose playMusic/pauseMusic globally so the YouTube callback can reach them
-  window._yt_isPlaying = false;
+  // Seek to 5:46 (346s) once the audio metadata is ready
+  if (bgMusic) {
+    bgMusic.addEventListener('loadedmetadata', () => {
+      bgMusic.currentTime = 346;
+    });
 
-  window._yt_setPlaying = function(state) {
-    window._yt_isPlaying = state;
-    if (musicIcon) musicIcon.textContent = state ? '⏸' : '▶';
-    if (musicWave) musicWave.classList.toggle('playing', state);
-  };
+    // If metadata already loaded (cached), set immediately
+    if (bgMusic.readyState >= 1) {
+      bgMusic.currentTime = 346;
+    }
+  }
+
+  function playMusic() {
+    if (!bgMusic) return;
+    // Always jump to 5:46 if at the very beginning
+    if (bgMusic.currentTime < 1) bgMusic.currentTime = 346;
+    bgMusic.play().then(() => {
+      musicIcon.textContent = '⏸';
+      if (musicWave) musicWave.classList.add('playing');
+    }).catch(err => console.log('Playback blocked until user interaction.', err));
+  }
+
+  function pauseMusic() {
+    if (!bgMusic) return;
+    bgMusic.pause();
+    musicIcon.textContent = '▶';
+    if (musicWave) musicWave.classList.remove('playing');
+  }
 
   if (musicBtn) {
     musicBtn.addEventListener('click', () => {
-      const player = window._ytPlayer;
-      if (!player) return;
-      if (window._yt_isPlaying) {
-        player.pauseVideo();
-      } else {
-        player.seekTo(346, true); // always jump to 5:46 when resuming
-        player.playVideo();
-      }
+      bgMusic.paused ? playMusic() : pauseMusic();
     });
   }
 
+  // Auto-start when she clicks "Enter Our Story"
   if (enterBtn) {
     enterBtn.addEventListener('click', () => {
-      setTimeout(() => {
-        const player = window._ytPlayer;
-        if (player && !window._yt_isPlaying) {
-          player.seekTo(346, true);
-          player.playVideo();
-        }
-      }, 400);
+      setTimeout(playMusic, 400);
     });
   }
 });
 
-// ── YouTube IFrame API callback — must be at GLOBAL scope ──────────────────
-// Innerbloom by Rufus Du Sol  (start = 5 min 46 sec = 346 s)
-window.onYouTubeIframeAPIReady = function () {
-  window._ytPlayer = new YT.Player('yt-player', {
-    height: '1',
-    width: '1',
-    videoId: 'oEoOtKjyBvE',
-    playerVars: {
-      autoplay : 0,
-      loop     : 1,
-      playlist : 'oEoOtKjyBvE',
-      controls : 0,
-      disablekb: 1,
-      fs       : 0,
-      rel      : 0,
-      start    : 346
-    },
-    events: {
-      onReady: function (e) {
-        e.target.setVolume(70);
-        e.target.seekTo(346, true); // belt-and-suspenders: seek to 5:46
-      },
-      onStateChange: function (e) {
-        const playing = (e.data === YT.PlayerState.PLAYING);
-        const stopped = (e.data === YT.PlayerState.PAUSED ||
-                         e.data === YT.PlayerState.ENDED);
-        if (playing) window._yt_setPlaying(true);
-        if (stopped) window._yt_setPlaying(false);
-      }
-    }
-  });
-};
-
-// Inject the YouTube IFrame API script
-(function () {
-  const tag = document.createElement('script');
-  tag.src = 'https://www.youtube.com/iframe_api';
-  const firstScript = document.getElementsByTagName('script')[0];
-  firstScript.parentNode.insertBefore(tag, firstScript);
-}());
+// Remove any leftover YouTube API global (cleanup)
+window.onYouTubeIframeAPIReady = undefined;
