@@ -198,49 +198,84 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 6. Background Music System
-  const bgMusic = document.getElementById('bg-music');
+  // 6. Background Music System — Innerbloom by Rufus Du Sol via YouTube IFrame API
   const musicBtn = document.getElementById('music-btn');
   const musicIcon = document.getElementById('music-icon');
   const musicWave = document.getElementById('music-wave');
   const enterBtn = document.getElementById('enter-btn');
 
-  function toggleMusic() {
-    if (!bgMusic) return;
-    
-    if (bgMusic.paused) {
-      playMusic();
-    } else {
-      pauseMusic();
+  let ytPlayer = null;
+  let isPlaying = false;
+
+  // Load YouTube IFrame API
+  const ytScript = document.createElement('script');
+  ytScript.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(ytScript);
+
+  // Called automatically by YouTube API when ready
+  window.onYouTubeIframeAPIReady = function () {
+    ytPlayer = new YT.Player('yt-player', {
+      height: '1',
+      width: '1',
+      // Innerbloom by Rufus Du Sol — official YouTube video ID
+      videoId: 'oEoOtKjyBvE',
+      playerVars: {
+        autoplay: 0,
+        loop: 1,
+        playlist: 'oEoOtKjyBvE',
+        controls: 0,
+        disablekb: 1,
+        fs: 0,
+        modestbranding: 1,
+        rel: 0
+      },
+      events: {
+        onReady: function (event) {
+          event.target.setVolume(70);
+        },
+        onStateChange: function (event) {
+          if (event.data === YT.PlayerState.PLAYING) {
+            musicIcon.textContent = '⏸';
+            if (musicWave) musicWave.classList.add('playing');
+            isPlaying = true;
+          } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+            musicIcon.textContent = '▶';
+            if (musicWave) musicWave.classList.remove('playing');
+            isPlaying = false;
+          }
+        }
+      }
+    });
+  };
+
+  function playMusic() {
+    if (ytPlayer && ytPlayer.playVideo) {
+      ytPlayer.playVideo();
     }
   }
 
-  function playMusic() {
-    if (!bgMusic) return;
-    bgMusic.play().then(() => {
-      musicIcon.textContent = '⏸';
-      if (musicWave) musicWave.classList.add('playing');
-    }).catch(err => {
-      console.log("Audio autoplay prevented. Awaiting interaction.", err);
-    });
+  function pauseMusic() {
+    if (ytPlayer && ytPlayer.pauseVideo) {
+      ytPlayer.pauseVideo();
+    }
   }
 
-  function pauseMusic() {
-    if (!bgMusic) return;
-    bgMusic.pause();
-    musicIcon.textContent = '▶';
-    if (musicWave) musicWave.classList.remove('playing');
+  function toggleMusic() {
+    if (isPlaying) {
+      pauseMusic();
+    } else {
+      playMusic();
+    }
   }
 
   if (musicBtn) {
     musicBtn.addEventListener('click', toggleMusic);
   }
 
-  // Optional: Auto-start music when she clicks the "Enter Our Story" button
+  // Auto-start Innerbloom when she clicks "Enter Our Story"
   if (enterBtn) {
     enterBtn.addEventListener('click', () => {
-      // Small timeout to allow the browser thread to register page click context
-      setTimeout(playMusic, 100);
+      setTimeout(playMusic, 300);
     });
   }
 });
